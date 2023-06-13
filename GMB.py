@@ -47,31 +47,32 @@ def Heun(N, tf, y0, f, g, dg):
     
     return ts, ys
 
+if __name__ == '__main__':
+    def f(z):
+        mu = 1
+        return mu*z
 
-def f(z):
-    mu = 1
-    return mu*z
+    def g(z):
+        sigma = 0.5
+        return sigma*z
 
-def g(z):
-    sigma = 0.5
-    return sigma*z
+    def dg():
+        sigma = 0.5
+        return sigma
 
-def dg():
-    sigma = 0.5
-    return sigma
-  
-# Parameter of simulation
-N = 10000
-tf = 4
-y0 = 3
+    
+    # Parameter of simulation
+    N = 10000
+    tf = 4
+    y0 = 3
 
-for _ in range(5):
-    ts, ys = Heun(N, tf, y0, f, g, dg)
-    plt.plot(ts, ys)
+    for _ in range(5):
+        ts, ys = Heun(N, tf, y0, f, g, dg)
+        plt.plot(ts, ys)
 
-plt.figure(1)
-plt.title('moto geometrico Browniano')
-plt.xlabel("time")
-plt.yscale('log')
-plt.grid()
-plt.show()
+    plt.figure(1)
+    plt.title('moto geometrico Browniano')
+    plt.xlabel("time")
+    plt.yscale('log')
+    plt.grid()
+    plt.show()
