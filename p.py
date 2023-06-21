@@ -89,11 +89,14 @@ data = np.zeros((L, M))
 
 for i in range(M):
 
-    _, sol = Heun(L-1, tf, close[0], f, g, dg)
+    t, sol = Heun(L-1, tf, close_data[0], f, g, dg)
     data[:, i] = sol
 
 # so is easy to plot, same format of SP500
 Sgbm = pd.DataFrame(data, index=SP500.index, columns=list(range(1, M+1)))
+
+gmb_mean = data.mean(axis=1)
+teo_mean = close_data[0]*np.exp(drift*t)
 
 #Plot
 
@@ -105,4 +108,12 @@ plt.plot(close_data, 'r')
 plt.xlabel('Date')
 plt.ylabel('Close')
 plt.grid()
+
+plt.figure(2)
+plt.plot(gmb_mean, 'b')
+plt.plot(teo_mean, 'r')
+plt.xlabel('Date')
+plt.ylabel('mean')
+plt.grid()
+
 plt.show()
