@@ -1,3 +1,4 @@
+import time
 import numpy as np
 import pandas as pd
 import yfinance as yf
@@ -53,6 +54,18 @@ def Heun(N, tf, y0, f, g, dg, args_f=(), args_g=(), args_dg=()):
 
     return ts, ys
 
+def f(z, drift):
+    return drift*z
+
+def g(z, volatility):
+    return volatility*z
+
+def dg(z, volatility):
+    return volatility
+
+#=================================================================
+# Parameter of data
+#=================================================================
 
 start_story = '2017-06-20' # Start of history
 end_story   = '2023-06-20' # End of history
@@ -61,50 +74,61 @@ ticker      = '^GSPC'      # SP500
 SP500 = yf.download(ticker, start=start_story, end=end_story, interval='1d', progress=False)
 L = len(SP500)   # len in days
 
+#=================================================================
+# Parameter of simulation
+#=================================================================
+
+np.random.seed(69420)
+
+M = 1000  # numer of simulation
+tf = 6   # time in years -> so dt=tf/(L-1) is 1 day in years unitis
+dt = tf/(L-1)
+data = np.zeros((L, M))
+
 close_data = SP500['Close']
 open_data  = SP500['Open']
-ret = np.log(close_data/open_data)
+ret = (close_data - open_data)/open_data # one day return
 
-# non so precisamente come settali
-drift = (close_data[-1]/close_data[1])**(365.0/L) - 1 # annual return
-volatility = 0.15#(close_data/close_data.shift(1)-1)[1:].std()*np.sqrt(L)
+# Parameter computed on true data
+drift      = np.mean(ret)/dt
+volatility = np.std(ret, ddof=1)/np.sqrt(dt)
 
-def f(z):
-    mu = drift
-    return mu*z
+#=================================================================
+# Run simulation
+#=================================================================
 
-def g(z):
-    sigma = volatility
-    return sigma*z
-
-def dg(z):
-    sigma = volatility
-    return sigma
-
-
-# Parameter of simulation
-M = 100  # numer of simulation
-tf = 6   # time in years -> so dt=tf/(L-1) is 1 day in years unitis
-data = np.zeros((L, M))
+start = time.time()
 
 for i in range(M):
 
-    t, sol = Heun(L-1, tf, close_data[0], f, g, dg)
+    t, sol = Heun(L-1, tf, close_data[0], f, g, dg, args_f=(drift,), args_g=(volatility,), args_dg=(volatility,))
     data[:, i] = sol
+
+end = time.time() - start
+print(f'Elapsed time : {end} s')
+
+#=================================================================
+# Plot and computation of something
+#=================================================================
 
 # so is easy to plot, same format of SP500
 Sgbm = pd.DataFrame(data, index=SP500.index, columns=list(range(1, M+1)))
 
-gmb_mean = data.mean(axis=1)
-teo_mean = close_data[0]*np.exp(drift*t)
+gmb_mean = pd.DataFrame(data.mean(axis=1), index=SP500.index)
+teo_mean = pd.DataFrame(close_data[0]*np.exp((drift)*t), index=SP500.index)
 
-#Plot
+mape = np.array([sum(abs(close_data-data[:, i])/close_data)/L for i in range(M)])
+m_mape = np.mean(mape)*100
+print(f'mape = {m_mape:.3f} %')
+
+##PLOT
 
 plt.figure(1)
 for i in range(1, M+1):
     plt.plot(Sgbm[i], 'b', lw=0.2)
 
 plt.plot(close_data, 'r')
+plt.plot(gmb_mean, 'k')
 plt.xlabel('Date')
 plt.ylabel('Close')
 plt.grid()
@@ -116,4 +140,10 @@ plt.xlabel('Date')
 plt.ylabel('mean')
 plt.grid()
 
+plt.figure(3)
+plt.grid()
+S = data[-1, :]
+x = np.linspace(np.min(S), np.max(S), 10000)
+plt.hist(S, bins=50, density=True)
+plt.plot(x, 1/(np.sqrt(2*np.pi)*(x*volatility*np.sqrt(tf)))*np.exp(-(np.log(x)-np.log(close_data[0])-(drift-volatility**2/2)*tf)**2/(2*volatility**2*tf)))
 plt.show()
